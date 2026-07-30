@@ -120,7 +120,7 @@ const CHARS: &[char] = &[
 //pub const RENDEZVOUS_SERVERS: &[&str] = &["rs-ny.rustdesk.com"];
 //pub const RS_PUB_KEY: &str = "OeVuKk5nlHiXp+APNn0Y3pC1Iwpwn44JGqrQCsWqmBw=";
 pub const RENDEZVOUS_SERVERS: &[&str] = &["rustdesk.weizexin.top"];
-pub const RS_PUB_KEY: &str = "kMB9KQN+oInVNDSgl1Mns2JGEpVn3XKDsEE2D9Jz1Cw=";
+pub const RS_PUB_KEY: &str = "+Yh+wxuMQLZmWGhtK5C1dW0a+TdQknlyTZMYUam5lrM=";
 
 
 pub const RENDEZVOUS_PORT: i32 = 21116;
