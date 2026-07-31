@@ -134,6 +134,13 @@ pub fn preset_permanent_password_storage_is_usable_for_auth(storage: &str, salt:
 pub fn decode_preset_password_h1_from_storage(
     storage: &str,
 ) -> Option<[u8; PERMANENT_PASSWORD_H1_LEN]> {
+    if storage.starts_with(PERMANENT_PASSWORD_ENC_VERSION) {
+        let (hashed_storage, decrypted, _) = decrypt_permanent_password_str_or_original(storage);
+        if !decrypted {
+            return None;
+        }
+        return decode_password_h1_after_prefix(&hashed_storage, HBBS_PRESET_PASSWORD_HASH_PREFIX);
+    }
     decode_password_h1_after_prefix(storage, HBBS_PRESET_PASSWORD_HASH_PREFIX)
 }
 
@@ -242,7 +249,16 @@ mod tests {
             Some(h1)
         );
     }
+    #[test]
+    fn test_preset_password_storage_accepts_encrypted_current_format() {
+        let salt = "salt123";
+        let h1 = compute_permanent_password_h1("p@ssw0rd", salt);
+        let storage = encode_permanent_password_encrypted_storage_from_h1(&h1).unwrap();
 
+        assert_eq!(decode_preset_password_h1_from_storage(&storage), Some(h1));
+        assert!(preset_permanent_password_storage_is_usable_for_auth(&storage, salt));
+        assert!(preset_permanent_password_storage_matches_plain(&storage, salt, "p@ssw0rd"));
+    }
     #[test]
     fn test_encrypted_hashed_password_storage_matches_plain_with_salt() {
         let salt = "salt123";
