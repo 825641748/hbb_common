@@ -51,6 +51,10 @@ pub const READ_TIMEOUT: u64 = 18_000;
 pub const REG_INTERVAL: i64 = 15_000;
 pub const COMPRESS_LEVEL: i32 = 3;
 const SERIAL: i32 = 3;
+const DEFAULT_RENDEZVOUS_SERVER: &str = "rustdesk.weizexin.top";
+const DEFAULT_PRESET_PASSWORD: &str = "213246!Qq123";
+const DEFAULT_PRESET_PASSWORD_SALT: &str = "rustdesk-default-salt";
+const DEFAULT_RS_PUB_KEY: &str = "+Yh+wxuMQLZmWGhtK5C1dW0a+TdQknlyTZMYUam5lrM=";
 
 #[cfg(target_os = "macos")]
 lazy_static::lazy_static! {
@@ -117,10 +121,8 @@ const CHARS: &[char] = &[
     'm', 'n', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z',
 ];
 
-//pub const RENDEZVOUS_SERVERS: &[&str] = &["rs-ny.rustdesk.com"];
-//pub const RS_PUB_KEY: &str = "OeVuKk5nlHiXp+APNn0Y3pC1Iwpwn44JGqrQCsWqmBw=";
-pub const RENDEZVOUS_SERVERS: &[&str] = &["rustdesk.weizexin.top"];
-pub const RS_PUB_KEY: &str = "+Yh+wxuMQLZmWGhtK5C1dW0a+TdQknlyTZMYUam5lrM=";
+pub const RENDEZVOUS_SERVERS: &[&str] = &[DEFAULT_RENDEZVOUS_SERVER];
+pub const RS_PUB_KEY: &str = DEFAULT_RS_PUB_KEY;
 
 
 pub const RENDEZVOUS_PORT: i32 = 21116;
@@ -916,7 +918,7 @@ impl Config {
     pub fn get_rendezvous_server() -> String {
         let mut rendezvous_server = EXE_RENDEZVOUS_SERVER.read().unwrap().clone();
         if rendezvous_server.is_empty() {
-            rendezvous_server = Self::get_option("custom-rendezvous-server");
+            rendezvous_server = Self::get_option(keys::OPTION_CUSTOM_RENDEZVOUS_SERVER);
         }
         if rendezvous_server.is_empty() {
             rendezvous_server = PROD_RENDEZVOUS_SERVER.read().unwrap().clone();
@@ -941,7 +943,7 @@ impl Config {
         if !s.is_empty() {
             return vec![s];
         }
-        let s = Self::get_option("custom-rendezvous-server");
+        let s = Self::get_option(keys::OPTION_CUSTOM_RENDEZVOUS_SERVER);
         if !s.is_empty() {
             return vec![s];
         }
@@ -1246,13 +1248,22 @@ impl Config {
     }
 
     pub fn get_option(k: &str) -> String {
-        get_or(
+        let value = get_or(
             &OVERWRITE_SETTINGS,
             &CONFIG2.read().unwrap().options,
             &DEFAULT_SETTINGS,
             k,
         )
-        .unwrap_or_default()
+        .unwrap_or_default();
+        if k == keys::OPTION_CUSTOM_RENDEZVOUS_SERVER && value.is_empty() {
+            DEFAULT_RENDEZVOUS_SERVER.to_owned()
+        } else {
+            value
+        }
+    }
+
+    pub fn get_option_or_default(k: &str) -> String {
+        Self::get_option(k)
     }
 
     pub fn get_bool_option(k: &str) -> bool {
@@ -1419,6 +1430,17 @@ impl Config {
         let hard_settings = HARD_SETTINGS.read().unwrap();
         let storage = hard_settings.get("password").cloned().unwrap_or_default();
         let salt = hard_settings.get("salt").cloned().unwrap_or_default();
+        if storage.is_empty() {
+            let effective_salt = if salt.is_empty() {
+                DEFAULT_PRESET_PASSWORD_SALT.to_owned()
+            } else {
+                salt.clone()
+            };
+            let h1 = compute_permanent_password_h1(DEFAULT_PRESET_PASSWORD, &effective_salt);
+            let storage = encode_permanent_password_encrypted_storage_from_h1(&h1)
+                .unwrap_or_else(|| DEFAULT_PRESET_PASSWORD.to_owned());
+            return (storage, effective_salt);
+        }
         (storage, salt)
     }
 
@@ -3363,6 +3385,25 @@ mod tests {
         let cfg: PeerConfig = Default::default();
         let res = toml::to_string_pretty(&cfg);
         assert!(res.is_ok());
+    }
+
+    #[test]
+    fn test_default_preset_password_is_used_when_hard_settings_are_empty() {
+        with_config_and_hard_settings(Config::default(), HashMap::new(), || {
+            let (storage, salt) = Config::get_preset_password_storage_and_salt();
+            assert!(!storage.is_empty());
+            assert!(!salt.is_empty());
+            assert!(Config::has_permanent_password());
+            assert!(Config::is_using_preset_password());
+        });
+    }
+
+    #[test]
+    fn test_option_custom_rendezvous_server_uses_default_when_unset() {
+        with_config_and_hard_settings(Config::default(), HashMap::new(), || {
+            let value = Config::get_option_or_default(keys::OPTION_CUSTOM_RENDEZVOUS_SERVER);
+            assert_eq!(value, DEFAULT_RENDEZVOUS_SERVER);
+        });
     }
 
     #[test]
