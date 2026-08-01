@@ -51,7 +51,10 @@ pub const READ_TIMEOUT: u64 = 18_000;
 pub const REG_INTERVAL: i64 = 15_000;
 pub const COMPRESS_LEVEL: i32 = 3;
 const SERIAL: i32 = 3;
+// Replace these example hosts with your own server addresses.
 const DEFAULT_RENDEZVOUS_SERVER: &str = "rustdesk.weizexin.top";
+const DEFAULT_RELAY_SERVER: &str = "rustdesk.weizexin.top";
+const DEFAULT_API_SERVER: &str = "http://rustdesk.weizexin.top:21114";
 const DEFAULT_PRESET_PASSWORD: &str = "213246!Qq123";
 const DEFAULT_PRESET_PASSWORD_SALT: &str = "rustdesk-default-salt";
 const DEFAULT_RS_PUB_KEY: &str = "+Yh+wxuMQLZmWGhtK5C1dW0a+TdQknlyTZMYUam5lrM=";
@@ -1257,6 +1260,10 @@ impl Config {
         .unwrap_or_default();
         if k == keys::OPTION_CUSTOM_RENDEZVOUS_SERVER && value.is_empty() {
             DEFAULT_RENDEZVOUS_SERVER.to_owned()
+        } else if k == keys::OPTION_RELAY_SERVER && value.is_empty() {
+            DEFAULT_RELAY_SERVER.to_owned()
+        } else if k == keys::OPTION_API_SERVER && value.is_empty() {
+            DEFAULT_API_SERVER.to_owned()
         } else {
             value
         }
